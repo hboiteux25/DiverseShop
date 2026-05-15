@@ -276,19 +276,21 @@ Seja direto, amigável e use linguagem simples. Sempre confirme os dados antes d
 
 ### 8.1 Tema
 
-- **Dark mode por padrão**, com toggle para light mode.
-- Fundo principal: `zinc-950` / `zinc-900`
-- Cards: `zinc-900` com borda `zinc-800`
-- **Cor de destaque:** `violet-500` / `indigo-500` (gradientes sutis)
-- Texto primário: `zinc-50`, secundário: `zinc-400`
-- Sucesso: `emerald-500`, Erro: `red-500`, Alerta: `amber-500`
+- **Light mode por padrão**, sem alternância para dark mode salvo aprovação explícita.
+- A interface deve parecer corporativa, moderna, clara e operacional, priorizando velocidade de leitura, hierarquia objetiva e baixa fricção para tarefas repetidas.
+- Fundo principal: `slate-50` / `white`
+- Cards, tabelas e painéis: `white` com borda `slate-200`, sombra suave e raio moderado.
+- **Cor de destaque:** `indigo-600` / `sky-500` (gradientes sutis e funcionais)
+- Texto primário: `slate-950`, secundário: `slate-500` / `slate-600`
+- Sucesso: `emerald-600`, Erro: `red-600`, Alerta: `amber-600`
+- Evitar estética de landing page, excesso decorativo, cartões aninhados e telas com baixa densidade de informação. O sistema deve ser pensado para uso diário em uma empresa.
 
 ### 8.2 Paleta de Gradientes
 
 ```css
 /* Gradientes nos destaques e headers */
-.gradient-primary { background: linear-gradient(135deg, #6d28d9, #4f46e5); }
-.gradient-card-hover { background: linear-gradient(135deg, #18181b, #1e1b4b10); }
+.gradient-primary { background: linear-gradient(135deg, #4f46e5, #0ea5e9); }
+.gradient-soft { background: linear-gradient(135deg, #ffffff, #eef2ff, #e0f2fe); }
 ```
 
 ### 8.3 Componentes shadcn/ui
@@ -306,7 +308,7 @@ Seja direto, amigável e use linguagem simples. Sempre confirme os dados antes d
 
 ### 8.5 Tipografia
 
-- Font família: `Geist Sans` (padrão Next.js 15) + `Geist Mono` para valores numéricos.
+- Font família: `Inter` para toda a interface corporativa + `Geist Mono` para valores numéricos.
 - Hierarquia: `text-2xl font-bold` → título de página, `text-lg font-semibold` → seção, `text-sm` → labels.
 
 ---
