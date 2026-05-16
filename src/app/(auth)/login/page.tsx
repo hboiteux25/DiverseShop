@@ -1,5 +1,3 @@
-import Link from "next/link"
-
 import { LoginForm } from "@/components/auth/login-form"
 import {
   Card,
@@ -75,12 +73,6 @@ export default async function LoginPage() {
             </CardHeader>
             <CardContent className="flex flex-col gap-4 px-6 py-6">
               <LoginForm />
-              <Link
-                href="/esqueci-senha"
-                className="text-center text-sm font-medium text-indigo-700 transition-colors hover:text-indigo-900"
-              >
-                Esqueceu a senha?
-              </Link>
             </CardContent>
           </Card>
         </div>

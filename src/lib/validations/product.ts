@@ -10,4 +10,5 @@ export const productSchema = z.object({
   supplier_id: z.string().uuid("Fornecedor inválido"),
 })
 
+export type ProductFormInput = z.input<typeof productSchema>
 export type ProductFormData = z.infer<typeof productSchema>

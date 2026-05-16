@@ -353,6 +353,7 @@ process.env.OPENAI_API_KEY      // Nunca em componente client
 ### 10.3 Tratamento de Erros
 
 - Server Actions e Route Handlers sempre retornam `{ data, error }` — nunca deixar erros sem tratamento.
+- Ações de CRUD devem retornar também uma mensagem em português para sucesso e erro, para uso direto em toast/feedback da interface.
 - Usar `try/catch` em todas as operações assíncronas.
 - Erros do Supabase devem ser logados no servidor (sem expor ao client) e retornar mensagem genérica amigável.
 

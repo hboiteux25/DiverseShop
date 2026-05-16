@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import type { AuthError, User } from "@supabase/supabase-js"
 
 import { createClient } from "@/lib/supabase/server"
-import { signInSchema, signUpSchema } from "@/lib/validations/auth"
+import { resetPasswordRequestSchema, signInSchema, signUpSchema } from "@/lib/validations/auth"
 
 export type ActionResult<T> =
   | { data: T; error: null }
@@ -14,10 +14,11 @@ function isInvalidLogin(error: AuthError | null) {
   return error?.message.toLowerCase().includes("invalid login credentials") ?? false
 }
 
-export async function signIn(
-  email: string,
-  password: string,
-): Promise<ActionResult<User>> {
+function getAppUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3002"
+}
+
+export async function signIn(email: string, password: string): Promise<ActionResult<User>> {
   const parsedCredentials = signInSchema.safeParse({ email, password })
 
   if (!parsedCredentials.success) {
@@ -38,7 +39,7 @@ export async function signIn(
       return {
         data: null,
         error: isInvalidLogin(error)
-          ? "Conta não encontrada ou senha incorreta. Confira os dados ou crie uma conta."
+          ? "Email ou senha não conferem. Confira os dados ou envie um email para redefinir sua senha."
           : "Não foi possível entrar agora. Tente novamente em instantes.",
       }
     }
@@ -88,6 +89,10 @@ export async function signUp(
       }
     }
 
+    if (data.session) {
+      await supabase.auth.signOut()
+    }
+
     return {
       data: data.user,
       error: null,
@@ -96,6 +101,41 @@ export async function signUp(
     return {
       data: null,
       error: "Não foi possível criar a conta agora. Tente novamente em instantes.",
+    }
+  }
+}
+
+export async function requestPasswordReset(email: string): Promise<ActionResult<true>> {
+  const parsedEmail = resetPasswordRequestSchema.safeParse({ email })
+
+  if (!parsedEmail.success) {
+    return {
+      data: null,
+      error: "Informe um email válido para redefinir a senha.",
+    }
+  }
+
+  try {
+    const supabase = await createClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(parsedEmail.data.email, {
+      redirectTo: `${getAppUrl()}/resetar-senha`,
+    })
+
+    if (error) {
+      return {
+        data: null,
+        error: "Não foi possível enviar o email de redefinição agora.",
+      }
+    }
+
+    return {
+      data: true,
+      error: null,
+    }
+  } catch {
+    return {
+      data: null,
+      error: "Não foi possível enviar o email de redefinição agora.",
     }
   }
 }
