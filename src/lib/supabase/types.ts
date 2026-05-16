@@ -252,6 +252,7 @@ export type Database = {
           discount: number
           id: string
           net_received: number
+          payment_details: Json
           payment_method: string
           status: string
           total: number
@@ -264,6 +265,7 @@ export type Database = {
           discount?: number
           id?: string
           net_received: number
+          payment_details?: Json
           payment_method: string
           status?: string
           total: number
@@ -276,6 +278,7 @@ export type Database = {
           discount?: number
           id?: string
           net_received?: number
+          payment_details?: Json
           payment_method?: string
           status?: string
           total?: number
@@ -418,6 +421,16 @@ export type Database = {
           sales_count: number
           cancelled_sales_count: number
         }[]
+      }
+      create_sale_atomic: {
+        Args: {
+          p_items: Json
+          p_payment_method: string
+          p_discount?: number
+          p_card_fee_rate?: number | null
+          p_payment_details?: Json
+        }
+        Returns: Database["public"]["Tables"]["sales"]["Row"]
       }
     }
     Enums: {
