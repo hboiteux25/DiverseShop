@@ -121,6 +121,7 @@ export type Database = {
           barcode: string | null
           box_number: number | null
           created_at: string
+          deleted_at: string | null
           description: string
           id: string
           min_stock: number
@@ -135,6 +136,7 @@ export type Database = {
           barcode?: string | null
           box_number?: number | null
           created_at?: string
+          deleted_at?: string | null
           description: string
           id?: string
           min_stock?: number
@@ -149,6 +151,7 @@ export type Database = {
           barcode?: string | null
           box_number?: number | null
           created_at?: string
+          deleted_at?: string | null
           description?: string
           id?: string
           min_stock?: number
