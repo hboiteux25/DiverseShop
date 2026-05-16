@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 
 import { UserMenu } from "@/components/layout/user-menu"
+import { PageTransition } from "@/components/layout/page-transition"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -187,7 +188,9 @@ export function DashboardShell({ children }: Readonly<{ children: ReactNode }>) 
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-6 md:px-6 lg:px-8">{children}</main>
+        <main className="flex-1 px-4 py-6 md:px-6 lg:px-8">
+          <PageTransition>{children}</PageTransition>
+        </main>
 
         <footer className="border-t border-slate-200 bg-white px-4 py-4 text-xs text-slate-500 md:px-6 lg:px-8">
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">

@@ -14,6 +14,51 @@ function isInvalidLogin(error: AuthError | null) {
   return error?.message.toLowerCase().includes("invalid login credentials") ?? false
 }
 
+function isEmailProviderDisabled(error: AuthError | null) {
+  const message = error?.message.toLowerCase() ?? ""
+
+  return (
+    message.includes("email logins are disabled") ||
+    message.includes("email signups are disabled")
+  )
+}
+
+function isEmailNotConfirmed(error: AuthError | null) {
+  return error?.message.toLowerCase().includes("email not confirmed") ?? false
+}
+
+function getSignInErrorMessage(error: AuthError | null) {
+  if (isInvalidLogin(error)) {
+    return "Email ou senha não conferem. Confira os dados ou envie um email para redefinir sua senha."
+  }
+
+  if (isEmailNotConfirmed(error)) {
+    return "Seu email ainda não foi confirmado. Abra o link enviado para seu email antes de entrar."
+  }
+
+  if (isEmailProviderDisabled(error)) {
+    return "Login por email e senha está desativado no Supabase. Ative o provedor Email em Authentication para entrar."
+  }
+
+  return "Não foi possível entrar agora. Tente novamente em instantes."
+}
+
+function getSignUpErrorMessage(error: AuthError | null) {
+  if (isEmailProviderDisabled(error)) {
+    return "Cadastro por email e senha está desativado no Supabase. Ative o provedor Email em Authentication para criar contas."
+  }
+
+  return "Não foi possível criar a conta. Confira os dados e tente novamente."
+}
+
+function getPasswordResetErrorMessage(error: AuthError | null) {
+  if (isEmailProviderDisabled(error)) {
+    return "Redefinição por email está desativada no Supabase. Ative o provedor Email em Authentication."
+  }
+
+  return "Não foi possível enviar o email de redefinição agora."
+}
+
 function getAppUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3002"
 }
@@ -38,9 +83,7 @@ export async function signIn(email: string, password: string): Promise<ActionRes
     if (error || !data.user) {
       return {
         data: null,
-        error: isInvalidLogin(error)
-          ? "Email ou senha não conferem. Confira os dados ou envie um email para redefinir sua senha."
-          : "Não foi possível entrar agora. Tente novamente em instantes.",
+        error: getSignInErrorMessage(error),
       }
     }
 
@@ -85,7 +128,7 @@ export async function signUp(
     if (error || !data.user) {
       return {
         data: null,
-        error: "Não foi possível criar a conta. Confira os dados e tente novamente.",
+        error: getSignUpErrorMessage(error),
       }
     }
 
@@ -124,7 +167,7 @@ export async function requestPasswordReset(email: string): Promise<ActionResult<
     if (error) {
       return {
         data: null,
-        error: "Não foi possível enviar o email de redefinição agora.",
+        error: getPasswordResetErrorMessage(error),
       }
     }
 

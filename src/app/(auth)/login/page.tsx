@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/auth/login-form"
+import { PageTransition } from "@/components/layout/page-transition"
 import {
   Card,
   CardContent,
@@ -16,6 +17,7 @@ const OPERATION_CARDS = [
 export default async function LoginPage() {
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_55%,#f8fafc_100%)] text-slate-950">
+      <PageTransition className="min-h-screen">
       <section className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -77,6 +79,7 @@ export default async function LoginPage() {
           </Card>
         </div>
       </section>
+      </PageTransition>
     </main>
   )
 }
