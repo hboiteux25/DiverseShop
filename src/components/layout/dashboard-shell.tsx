@@ -27,6 +27,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import { useRealtimeStock } from "@/hooks/use-realtime-stock"
 
 type NavItem = {
   title: string
@@ -74,6 +75,7 @@ function getPageTitle(pathname: string) {
 
 function SidebarContent({ closeOnNavigate = false }: { closeOnNavigate?: boolean }) {
   const pathname = usePathname()
+  const { criticalCount } = useRealtimeStock()
   const logoLink = (
     <Link href="/" className="flex items-center gap-3">
       <span className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-sky-500 text-sm font-bold text-white shadow-sm">
@@ -115,6 +117,11 @@ function SidebarContent({ closeOnNavigate = false }: { closeOnNavigate?: boolean
                 )}
               />
               <span>{item.title}</span>
+              {item.href === "/estoque" && criticalCount > 0 ? (
+                <span className="ml-auto rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                  {criticalCount}
+                </span>
+              ) : null}
             </Link>
           )
 

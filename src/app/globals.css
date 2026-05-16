@@ -152,3 +152,29 @@
     animation: none;
   }
 }
+
+@media print {
+  body {
+    background: white;
+  }
+
+  aside,
+  header,
+  footer,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}

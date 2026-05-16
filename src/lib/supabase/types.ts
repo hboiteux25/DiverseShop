@@ -432,6 +432,25 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["sales"]["Row"]
       }
+      register_stock_entry: {
+        Args: {
+          p_product_id: string
+          p_quantity: number
+          p_reason?: string | null
+          p_box_number?: number | null
+          p_supplier_id?: string | null
+          p_purchase_price?: number | null
+        }
+        Returns: Database["public"]["Tables"]["products"]["Row"]
+      }
+      adjust_product_stock: {
+        Args: {
+          p_product_id: string
+          p_new_quantity: number
+          p_reason: string
+        }
+        Returns: Database["public"]["Tables"]["products"]["Row"]
+      }
     }
     Enums: {
       [_ in never]: never
