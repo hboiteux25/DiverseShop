@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import type { AuthError, User } from "@supabase/supabase-js"
 
 import { createClient } from "@/lib/supabase/server"
-import { loginSchema } from "@/lib/validations/auth"
+import { signInSchema, signUpSchema } from "@/lib/validations/auth"
 
 export type ActionResult<T> =
   | { data: T; error: null }
@@ -14,38 +14,16 @@ function isInvalidLogin(error: AuthError | null) {
   return error?.message.toLowerCase().includes("invalid login credentials") ?? false
 }
 
-async function saveProfileName(userId: string, name: string): Promise<string | null> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from("profiles")
-    .upsert(
-      {
-        id: userId,
-        name,
-      },
-      {
-        onConflict: "id",
-      },
-    )
-
-  if (error) {
-    return "Não foi possível salvar o nome do perfil. Tente novamente."
-  }
-
-  return null
-}
-
 export async function signIn(
-  name: string,
   email: string,
   password: string,
 ): Promise<ActionResult<User>> {
-  const parsedCredentials = loginSchema.safeParse({ name, email, password })
+  const parsedCredentials = signInSchema.safeParse({ email, password })
 
   if (!parsedCredentials.success) {
     return {
       data: null,
-      error: "Confira nome, email e senha antes de continuar.",
+      error: "Confira email e senha antes de continuar.",
     }
   }
 
@@ -65,23 +43,6 @@ export async function signIn(
       }
     }
 
-    const profileError = await saveProfileName(data.user.id, parsedCredentials.data.name)
-
-    if (profileError) {
-      await supabase.auth.signOut()
-
-      return {
-        data: null,
-        error: profileError,
-      }
-    }
-
-    await supabase.auth.updateUser({
-      data: {
-        name: parsedCredentials.data.name,
-      },
-    })
-
     return {
       data: data.user,
       error: null,
@@ -99,7 +60,7 @@ export async function signUp(
   email: string,
   password: string,
 ): Promise<ActionResult<User>> {
-  const parsedCredentials = loginSchema.safeParse({ name, email, password })
+  const parsedCredentials = signUpSchema.safeParse({ name, email, password })
 
   if (!parsedCredentials.success) {
     return {
@@ -124,19 +85,6 @@ export async function signUp(
       return {
         data: null,
         error: "Não foi possível criar a conta. Confira os dados e tente novamente.",
-      }
-    }
-
-    if (data.session) {
-      const profileError = await saveProfileName(data.user.id, parsedCredentials.data.name)
-
-      if (profileError) {
-        await supabase.auth.signOut()
-
-        return {
-          data: null,
-          error: profileError,
-        }
       }
     }
 

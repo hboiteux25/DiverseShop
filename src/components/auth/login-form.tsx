@@ -10,27 +10,29 @@ import { signIn, signUp } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { loginSchema, type LoginFormData } from "@/lib/validations/auth"
+import { authFormSchema, type AuthFormData } from "@/lib/validations/auth"
 
 export function LoginForm() {
   const router = useRouter()
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in")
-  const form = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<AuthFormData>({
+    resolver: zodResolver(authFormSchema),
     defaultValues: {
+      mode: "sign-in",
       name: "",
       email: "",
       password: "",
     },
   })
 
-  async function handleSubmit(data: LoginFormData) {
+  async function handleSubmit(data: AuthFormData) {
     form.clearErrors("root")
 
+    const currentMode = data.mode
     const result =
-      mode === "sign-up"
-        ? await signUp(data.name, data.email, data.password)
-        : await signIn(data.name, data.email, data.password)
+      currentMode === "sign-up"
+        ? await signUp(data.name ?? "", data.email, data.password)
+        : await signIn(data.email, data.password)
 
     if (result.error) {
       form.setError("root", {
@@ -53,7 +55,11 @@ export function LoginForm() {
               ? "bg-white text-slate-950 shadow-sm"
               : "text-slate-500 hover:text-slate-900"
           }`}
-          onClick={() => setMode("sign-in")}
+          onClick={() => {
+            setMode("sign-in")
+            form.setValue("mode", "sign-in")
+            form.clearErrors("name")
+          }}
         >
           Entrar
         </button>
@@ -64,26 +70,31 @@ export function LoginForm() {
               ? "bg-white text-slate-950 shadow-sm"
               : "text-slate-500 hover:text-slate-900"
           }`}
-          onClick={() => setMode("sign-up")}
+          onClick={() => {
+            setMode("sign-up")
+            form.setValue("mode", "sign-up")
+          }}
         >
           Criar conta
         </button>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Nome</Label>
-        <Input
-          id="name"
-          type="text"
-          autoComplete="name"
-          placeholder="Seu nome"
-          aria-invalid={Boolean(form.formState.errors.name)}
-          {...form.register("name")}
-        />
-        {form.formState.errors.name ? (
-          <p className="text-sm text-red-600">{form.formState.errors.name.message}</p>
-        ) : null}
-      </div>
+      {mode === "sign-up" ? (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="name">Nome</Label>
+          <Input
+            id="name"
+            type="text"
+            autoComplete="name"
+            placeholder="Seu nome"
+            aria-invalid={Boolean(form.formState.errors.name)}
+            {...form.register("name")}
+          />
+          {form.formState.errors.name ? (
+            <p className="text-sm text-red-600">{form.formState.errors.name.message}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="email">Email</Label>
