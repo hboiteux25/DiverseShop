@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 
 import { UserMenu } from "@/components/layout/user-menu"
+import { ChatWidget } from "@/components/chat/chat-widget"
 import { PageTransition } from "@/components/layout/page-transition"
 import { Button } from "@/components/ui/button"
 import {
@@ -206,6 +207,7 @@ export function DashboardShell({ children }: Readonly<{ children: ReactNode }>) 
           </div>
         </footer>
       </div>
+      <ChatWidget />
     </div>
   )
 }

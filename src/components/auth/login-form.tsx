@@ -87,6 +87,7 @@ export function LoginForm() {
 
   return (
     <form
+      method="post"
       className={`flex flex-col gap-4 transition-all duration-300 ease-out ${
         isLeaving ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"
       }`}

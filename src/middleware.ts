@@ -3,6 +3,14 @@ import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
 
 const AUTH_ROUTES = ["/login", "/register"]
+const SENSITIVE_QUERY_PARAMS = [
+  "password",
+  "senha",
+  "token",
+  "access_token",
+  "refresh_token",
+  "code_verifier",
+]
 
 const DASHBOARD_ROUTES = [
   "/",
@@ -34,6 +42,15 @@ function isProtectedRoute(pathname: string) {
   })
 }
 
+function applySecurityHeaders(response: NextResponse) {
+  response.headers.set("Referrer-Policy", "no-referrer")
+  response.headers.set("X-Content-Type-Options", "nosniff")
+  response.headers.set("X-Frame-Options", "DENY")
+  response.headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()")
+
+  return response
+}
+
 async function getUserWithTimeout(
   supabase: SupabaseClient,
 ): Promise<User | null> {
@@ -51,8 +68,23 @@ export async function middleware(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const pathname = request.nextUrl.pathname
 
+  const sanitizedUrl = request.nextUrl.clone()
+  let hasSensitiveQueryParam = false
+
+  SENSITIVE_QUERY_PARAMS.forEach((param) => {
+    if (sanitizedUrl.searchParams.has(param)) {
+      sanitizedUrl.searchParams.delete(param)
+      hasSensitiveQueryParam = true
+    }
+  })
+
+  if (hasSensitiveQueryParam) {
+    sanitizedUrl.searchParams.delete("email")
+    return applySecurityHeaders(NextResponse.redirect(sanitizedUrl))
+  }
+
   if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.next({ request })
+    return applySecurityHeaders(NextResponse.next({ request }))
   }
 
   let response = NextResponse.next({ request })
@@ -81,7 +113,7 @@ export async function middleware(request: NextRequest) {
     redirectUrl.pathname = "/login"
     redirectUrl.searchParams.set("redirectedFrom", pathname)
 
-    return NextResponse.redirect(redirectUrl)
+    return applySecurityHeaders(NextResponse.redirect(redirectUrl))
   }
 
   if (user && isAuthRoute(pathname)) {
@@ -89,10 +121,10 @@ export async function middleware(request: NextRequest) {
     redirectUrl.pathname = "/dashboard"
     redirectUrl.search = ""
 
-    return NextResponse.redirect(redirectUrl)
+    return applySecurityHeaders(NextResponse.redirect(redirectUrl))
   }
 
-  return response
+  return applySecurityHeaders(response)
 }
 
 export const config = {
