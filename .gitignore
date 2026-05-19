@@ -47,3 +47,5 @@ next-env.d.ts
 # generated media artifacts
 /public/audio/
 /public/videos/
+
+.vercel
