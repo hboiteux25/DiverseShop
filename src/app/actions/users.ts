@@ -23,6 +23,10 @@ export type ActionResult<T> =
 
 type LegacyProfileRow = Pick<ProfileRow, "id" | "name" | "role" | "created_at">
 
+function isSupabaseAdminCredentialsError(error: unknown) {
+  return error instanceof Error && error.message === "Supabase admin credentials are not configured."
+}
+
 function legacyProfileToAppUser(profile: LegacyProfileRow): AppUser {
   return {
     ...profile,
@@ -256,7 +260,15 @@ export async function createUser(input: UserCreateInput): Promise<ActionResult<A
       error: null,
       message: "Usuário cadastrado com sucesso.",
     }
-  } catch {
+  } catch (error) {
+    if (isSupabaseAdminCredentialsError(error)) {
+      return {
+        data: null,
+        error: "Configure a variável SUPABASE_SERVICE_ROLE_KEY no arquivo .env.local para cadastrar usuários.",
+        message: "Configuração do Supabase incompleta.",
+      }
+    }
+
     return {
       data: null,
       error: "Não foi possível cadastrar o usuário agora.",
