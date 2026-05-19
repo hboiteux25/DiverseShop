@@ -4,7 +4,13 @@ import { redirect } from "next/navigation"
 import type { AuthError, User } from "@supabase/supabase-js"
 
 import { createClient } from "@/lib/supabase/server"
-import { resetPasswordRequestSchema, signInSchema, signUpSchema } from "@/lib/validations/auth"
+import {
+  resetPasswordRequestSchema,
+  signInSchema,
+  signUpSchema,
+  updatePasswordSchema,
+  type UpdatePasswordFormData,
+} from "@/lib/validations/auth"
 
 export type ActionResult<T> =
   | { data: T; error: null }
@@ -41,14 +47,6 @@ function getSignInErrorMessage(error: AuthError | null) {
   }
 
   return "Não foi possível entrar agora. Tente novamente em instantes."
-}
-
-function getSignUpErrorMessage(error: AuthError | null) {
-  if (isEmailProviderDisabled(error)) {
-    return "Cadastro por email e senha está desativado no Supabase. Ative o provedor Email em Authentication para criar contas."
-  }
-
-  return "Não foi possível criar a conta. Confira os dados e tente novamente."
 }
 
 function getPasswordResetErrorMessage(error: AuthError | null) {
@@ -113,37 +111,73 @@ export async function signUp(
     }
   }
 
+  return {
+    data: null,
+    error: "Novos usuários devem ser cadastrados por um administrador na tela de Permissões.",
+  }
+}
+
+export async function updateOwnPassword(
+  data: UpdatePasswordFormData,
+): Promise<ActionResult<true>> {
+  const parsedPassword = updatePasswordSchema.safeParse(data)
+
+  if (!parsedPassword.success) {
+    return {
+      data: null,
+      error: parsedPassword.error.issues[0]?.message ?? "Confira a nova senha.",
+    }
+  }
+
   try {
     const supabase = await createClient()
-    const { data, error } = await supabase.auth.signUp({
-      email: parsedCredentials.data.email,
-      password: parsedCredentials.data.password,
-      options: {
-        data: {
-          name: parsedCredentials.data.name,
-        },
-      },
-    })
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-    if (error || !data.user) {
+    if (!user) {
       return {
         data: null,
-        error: getSignUpErrorMessage(error),
+        error: "Entre novamente antes de alterar a senha.",
       }
     }
 
-    if (data.session) {
-      await supabase.auth.signOut()
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: parsedPassword.data.password,
+    })
+
+    if (updateError) {
+      return {
+        data: null,
+        error: "Não foi possível salvar a nova senha agora.",
+      }
     }
 
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        must_change_password: false,
+        password_changed_at: new Date().toISOString(),
+      })
+      .eq("id", user.id)
+
+    if (profileError) {
+      return {
+        data: null,
+        error: "Senha alterada, mas não foi possível liberar o acesso. Chame um administrador.",
+      }
+    }
+
+    await supabase.auth.signOut()
+
     return {
-      data: data.user,
+      data: true,
       error: null,
     }
   } catch {
     return {
       data: null,
-      error: "Não foi possível criar a conta agora. Tente novamente em instantes.",
+      error: "Não foi possível alterar a senha agora.",
     }
   }
 }

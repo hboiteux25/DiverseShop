@@ -19,25 +19,6 @@ export const signUpSchema = signInSchema.extend({
 })
 
 export const authFormSchema = signInSchema
-  .extend({
-    mode: z.enum(["sign-in", "sign-up"]),
-    name: z.string().optional(),
-  })
-  .superRefine((data, context) => {
-    if (data.mode === "sign-in") {
-      return
-    }
-
-    const parsedName = nameSchema.safeParse(data.name)
-
-    if (!parsedName.success) {
-      context.addIssue({
-        code: "custom",
-        message: parsedName.error.issues[0]?.message ?? "Informe seu nome",
-        path: ["name"],
-      })
-    }
-  })
 
 export const resetPasswordRequestSchema = z.object({
   email: emailSchema,

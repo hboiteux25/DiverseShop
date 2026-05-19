@@ -9,6 +9,75 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      app_screens: {
+        Row: {
+          created_at: string
+          default_access: string
+          description: string
+          icon_name: string
+          id: string
+          route_path: string
+          show_in_navigation: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_access?: string
+          description?: string
+          icon_name?: string
+          id: string
+          route_path: string
+          show_in_navigation?: boolean
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_access?: string
+          description?: string
+          icon_name?: string
+          id?: string
+          route_path?: string
+          show_in_navigation?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      app_actions: {
+        Row: {
+          area: string
+          created_at: string
+          default_access: string
+          description: string
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          default_access?: string
+          description?: string
+          id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          default_access?: string
+          description?: string
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cash_closings: {
         Row: {
           closed_by: string | null
@@ -175,20 +244,29 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          email: string | null
           id: string
+          must_change_password: boolean
           name: string
+          password_changed_at: string | null
           role: string
         }
         Insert: {
           created_at?: string
+          email?: string | null
           id: string
+          must_change_password?: boolean
           name: string
+          password_changed_at?: string | null
           role?: string
         }
         Update: {
           created_at?: string
+          email?: string | null
           id?: string
+          must_change_password?: boolean
           name?: string
+          password_changed_at?: string | null
           role?: string
         }
         Relationships: [
@@ -196,6 +274,84 @@ export type Database = {
             foreignKeyName: "profiles_id_fkey"
             columns: ["id"]
             isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_screen_permissions: {
+        Row: {
+          can_access: boolean
+          role: string
+          screen_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          can_access?: boolean
+          role: string
+          screen_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          can_access?: boolean
+          role?: string
+          screen_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_screen_permissions_screen_id_fkey"
+            columns: ["screen_id"]
+            isOneToOne: false
+            referencedRelation: "app_screens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_screen_permissions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      role_action_permissions: {
+        Row: {
+          action_id: string
+          can_execute: boolean
+          role: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action_id: string
+          can_execute?: boolean
+          role: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action_id?: string
+          can_execute?: boolean
+          role?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_action_permissions_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "app_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_action_permissions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },

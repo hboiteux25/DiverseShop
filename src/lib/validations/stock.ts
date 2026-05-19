@@ -1,8 +1,10 @@
 import { z } from "zod"
 
+import { postgresUuid } from "@/lib/validations/shared"
+
 const optionalUuid = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
-  z.string().uuid("Fornecedor inválido").optional(),
+  postgresUuid("Fornecedor inválido").optional(),
 )
 
 const optionalPositiveInteger = z.preprocess(
@@ -16,14 +18,14 @@ const optionalPositiveMoney = z.preprocess(
 )
 
 export const stockMovementSchema = z.object({
-  product_id: z.string().uuid("Produto inválido"),
+  product_id: postgresUuid("Produto inválido"),
   type: z.enum(["in", "out", "adjustment"]),
   quantity: z.coerce.number().int("Quantidade deve ser inteira").positive("Quantidade deve ser positiva"),
   reason: z.string().trim().optional(),
 })
 
 export const stockEntrySchema = z.object({
-  product_id: z.string().uuid("Produto inválido"),
+  product_id: postgresUuid("Produto inválido"),
   quantity: z.coerce.number().int("Quantidade deve ser inteira").positive("Quantidade deve ser positiva"),
   reason: z.string().trim().optional(),
   box_number: optionalPositiveInteger,
@@ -32,7 +34,7 @@ export const stockEntrySchema = z.object({
 })
 
 export const stockAdjustmentSchema = z.object({
-  product_id: z.string().uuid("Produto inválido"),
+  product_id: postgresUuid("Produto inválido"),
   new_quantity: z.coerce.number().int("Novo estoque deve ser inteiro").min(0, "Novo estoque não pode ser negativo"),
   reason: z.string().trim().min(8, "Informe uma justificativa com ao menos 8 caracteres"),
   password: z.string().min(1, "Confirme sua senha de administrador"),

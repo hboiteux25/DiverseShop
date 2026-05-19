@@ -61,6 +61,40 @@ function toPaymentDetails(details: SaleInput["payment_details"]): Json {
   }
 }
 
+function getSaleErrorMessage(errorMessage: string | undefined) {
+  const message = errorMessage ?? ""
+  const normalizedMessage = message
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+
+  if (message.includes("autenticado") || normalizedMessage.includes("usuario nao autenticado")) {
+    return "Entre novamente no sistema antes de finalizar a venda."
+  }
+
+  if (message.includes("permiss") || normalizedMessage.includes("usuario sem permissao")) {
+    return "Seu usuário precisa ter perfil de operador ou administrador para finalizar vendas."
+  }
+
+  if (message.includes("Estoque insuficiente")) {
+    return "Estoque insuficiente para concluir a venda."
+  }
+
+  if (message.includes("Produto") || normalizedMessage.includes("produto nao encontrado")) {
+    return "Um dos produtos do carrinho não foi encontrado ou foi removido."
+  }
+
+  if (message.includes("pagamento misto")) {
+    return "Os valores do pagamento misto precisam fechar com o total."
+  }
+
+  if (message.includes("create_sale_atomic")) {
+    return "A função de finalização de venda ainda não está aplicada no banco. Rode as migrations do Supabase."
+  }
+
+  return "Não foi possível finalizar a venda. Confira o estoque e tente novamente."
+}
+
 export async function createSale(data: SaleInput): Promise<ActionResult<SaleRow>> {
   const parsedSale = saleInputSchema.safeParse(data)
 
@@ -85,7 +119,7 @@ export async function createSale(data: SaleInput): Promise<ActionResult<SaleRow>
     if (error || !sale) {
       return {
         data: null,
-        error: "Não foi possível finalizar a venda. Confira o estoque e tente novamente.",
+        error: getSaleErrorMessage(error?.message),
         message: "Erro ao finalizar venda.",
       }
     }

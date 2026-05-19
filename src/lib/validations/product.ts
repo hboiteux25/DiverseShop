@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { postgresUuid } from "@/lib/validations/shared"
+
 const optionalText = z.preprocess(
   (value) => {
     if (typeof value !== "string") {
@@ -40,7 +42,7 @@ export const productSchema = z
       .int("Estoque mínimo deve ser um número inteiro")
       .min(0, "Estoque mínimo não pode ser negativo")
       .default(2),
-    supplier_id: z.string().uuid("Fornecedor inválido"),
+    supplier_id: postgresUuid("Fornecedor inválido"),
   })
   .refine((data) => data.sale_price >= data.purchase_price, {
     message: "Valor de venda deve ser maior ou igual ao valor de compra",

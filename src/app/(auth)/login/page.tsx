@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card"
 
 const OPERATION_CARDS = [
-  ["PDV", "Atendimento ágil"],
+  ["Vendas", "Atendimento ágil"],
   ["Estoque", "Reposição clara"],
   ["Caixa", "Fechamento seguro"],
 ] as const
@@ -70,7 +70,7 @@ export default async function LoginPage() {
                 <CardTitle className="text-2xl font-bold text-slate-950">Entrar no sistema</CardTitle>
               </div>
               <CardDescription className="text-slate-500">
-                Entre com sua conta ou crie um acesso para usar o painel operacional.
+                Entre com a conta criada pelo administrador para usar o painel operacional.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4 px-6 py-6">

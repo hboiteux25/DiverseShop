@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { createProduct } from "@/app/actions/products"
 import { getLowStockProducts, getOutOfStockProducts, getStockProducts } from "@/app/actions/stock"
+import { getUserRoleFromIdentity, isUserRole } from "@/lib/permissions/shared"
 import { createClient } from "@/lib/supabase/server"
 import { productSchema } from "@/lib/validations/product"
 
@@ -31,12 +32,6 @@ const chatActionSchema = z.discriminatedUnion("action", [
   createRestockListActionSchema,
 ])
 
-type UserRole = "admin" | "operator"
-
-function isUserRole(value: string | null): value is UserRole {
-  return value === "admin" || value === "operator"
-}
-
 async function getAuthenticatedRole() {
   const supabase = await createClient()
   const {
@@ -54,10 +49,11 @@ async function getAuthenticatedRole() {
     .maybeSingle()
 
   const role = profile?.role ?? null
+  const fallbackRole = getUserRoleFromIdentity(user)
 
   return {
     userId: user.id,
-    role: isUserRole(role) ? role : null,
+    role: isUserRole(role) ? role : fallbackRole,
   }
 }
 

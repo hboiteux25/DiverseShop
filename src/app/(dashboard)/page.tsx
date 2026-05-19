@@ -96,88 +96,100 @@ function getTrend(
 }
 
 async function getDashboardData() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  const now = new Date()
-  const today = getDayBounds(now)
-  const yesterdayDate = new Date(today.start)
-  yesterdayDate.setDate(today.start.getDate() - 1)
-  const yesterday = getDayBounds(yesterdayDate)
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    const now = new Date()
+    const today = getDayBounds(now)
+    const yesterdayDate = new Date(today.start)
+    yesterdayDate.setDate(today.start.getDate() - 1)
+    const yesterday = getDayBounds(yesterdayDate)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
 
-  const [
-    todaySalesResult,
-    yesterdaySalesResult,
-    monthSalesResult,
-    recentSalesResult,
-    lowStockResult,
-    profileResult,
-  ] = await Promise.all([
-    supabase
-      .from("sales")
-      .select("*")
-      .gte("created_at", today.start.toISOString())
-      .lt("created_at", today.end.toISOString()),
-    supabase
-      .from("sales")
-      .select("*")
-      .gte("created_at", yesterday.start.toISOString())
-      .lt("created_at", yesterday.end.toISOString()),
-    supabase
-      .from("sales")
-      .select("*")
-      .gte("created_at", monthStart.toISOString())
-      .lt("created_at", nextMonthStart.toISOString()),
-    supabase.from("sales").select("*").order("created_at", { ascending: false }).limit(5),
-    supabase
-      .from("products")
-      .select("*")
-      .in("status", ["out_of_stock", "low_stock"])
-      .order("stock_quantity", { ascending: true })
-      .limit(6),
-    user
-      ? supabase.from("profiles").select("name").eq("id", user.id).maybeSingle()
-      : Promise.resolve({ data: null }),
-  ])
+    const [
+      todaySalesResult,
+      yesterdaySalesResult,
+      monthSalesResult,
+      recentSalesResult,
+      lowStockResult,
+      profileResult,
+    ] = await Promise.all([
+      supabase
+        .from("sales")
+        .select("*")
+        .gte("created_at", today.start.toISOString())
+        .lt("created_at", today.end.toISOString()),
+      supabase
+        .from("sales")
+        .select("*")
+        .gte("created_at", yesterday.start.toISOString())
+        .lt("created_at", yesterday.end.toISOString()),
+      supabase
+        .from("sales")
+        .select("*")
+        .gte("created_at", monthStart.toISOString())
+        .lt("created_at", nextMonthStart.toISOString()),
+      supabase.from("sales").select("*").order("created_at", { ascending: false }).limit(5),
+      supabase
+        .from("products")
+        .select("*")
+        .in("status", ["out_of_stock", "low_stock"])
+        .order("stock_quantity", { ascending: true })
+        .limit(6),
+      user
+        ? supabase.from("profiles").select("name").eq("id", user.id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ])
 
-  const profile = profileResult.data
-  const todaySales = todaySalesResult.data ?? []
-  const yesterdaySales = yesterdaySalesResult.data ?? []
-  const monthSales = monthSalesResult.data ?? []
-  const recentSales = recentSalesResult.data ?? []
-  const lowStockProducts = lowStockResult.data ?? []
-  const completedMonthSaleIds = monthSales
-    .filter((sale) => sale.status === "completed")
-    .map((sale) => sale.id)
+    const profile = profileResult.data
+    const todaySales = todaySalesResult.data ?? []
+    const yesterdaySales = yesterdaySalesResult.data ?? []
+    const monthSales = monthSalesResult.data ?? []
+    const recentSales = recentSalesResult.data ?? []
+    const lowStockProducts = lowStockResult.data ?? []
+    const completedMonthSaleIds = monthSales
+      .filter((sale) => sale.status === "completed")
+      .map((sale) => sale.id)
 
-  const saleItemsResult =
-    completedMonthSaleIds.length > 0
-      ? await supabase
-          .from("sale_items")
-          .select("quantity, unit_price, discount, products(purchase_price)")
-          .in("sale_id", completedMonthSaleIds)
-      : { data: null }
+    const saleItemsResult =
+      completedMonthSaleIds.length > 0
+        ? await supabase
+            .from("sale_items")
+            .select("quantity, unit_price, discount, products(purchase_price)")
+            .in("sale_id", completedMonthSaleIds)
+        : { data: null }
 
-  const monthlyProfit =
-    saleItemsResult.data?.reduce((total, item) => {
-      const product = Array.isArray(item.products) ? item.products[0] : item.products
-      const purchasePrice = product?.purchase_price ?? 0
-      const lineProfit = (item.unit_price - purchasePrice) * item.quantity - item.discount
+    const monthlyProfit =
+      saleItemsResult.data?.reduce((total, item) => {
+        const product = Array.isArray(item.products) ? item.products[0] : item.products
+        const purchasePrice = product?.purchase_price ?? 0
+        const lineProfit = (item.unit_price - purchasePrice) * item.quantity - item.discount
 
-      return total + lineProfit
-    }, 0) ?? 0
+        return total + lineProfit
+      }, 0) ?? 0
 
-  return {
-    todayRevenue: sumCompletedSales(todaySales),
-    yesterdayRevenue: sumCompletedSales(yesterdaySales),
-    monthlyRevenue: sumCompletedSales(monthSales),
-    monthlyProfit,
-    recentSales,
-    lowStockProducts,
-    userName: profile?.name ?? getMetadataName(user?.user_metadata) ?? user?.email ?? "usuário",
+    return {
+      todayRevenue: sumCompletedSales(todaySales),
+      yesterdayRevenue: sumCompletedSales(yesterdaySales),
+      monthlyRevenue: sumCompletedSales(monthSales),
+      monthlyProfit,
+      recentSales,
+      lowStockProducts,
+      userName: profile?.name ?? getMetadataName(user?.user_metadata) ?? user?.email ?? "usuário",
+    }
+  } catch {
+    return {
+      todayRevenue: 0,
+      yesterdayRevenue: 0,
+      monthlyRevenue: 0,
+      monthlyProfit: 0,
+      recentSales: [],
+      lowStockProducts: [],
+      userName: "usuario",
+    }
   }
 }
 

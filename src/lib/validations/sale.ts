@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { postgresUuid } from "@/lib/validations/shared"
+
 export const paymentMethodSchema = z.enum([
   "cash",
   "pix",
@@ -9,7 +11,7 @@ export const paymentMethodSchema = z.enum([
 ])
 
 export const saleItemInputSchema = z.object({
-  product_id: z.string().uuid("Produto inválido"),
+  product_id: postgresUuid("Produto inválido"),
   quantity: z.coerce
     .number()
     .int("Quantidade deve ser um número inteiro")

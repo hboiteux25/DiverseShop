@@ -156,6 +156,9 @@ export default function SalesPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [query, setQuery] = useState("")
   const [selectedProduct, setSelectedProduct] = useState<PosProduct | null>(null)
+  const [suggestions, setSuggestions] = useState<PosProduct[]>([])
+  const [isSuggesting, setIsSuggesting] = useState(false)
+  const [isSuggestionListOpen, setIsSuggestionListOpen] = useState(false)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [discountValue, setDiscountValue] = useState("")
   const [discountMode, setDiscountMode] = useState<"currency" | "percent">("currency")
@@ -286,6 +289,55 @@ export default function SalesPage() {
     }
   }, [mediaStream])
 
+  useEffect(() => {
+    const trimmedQuery = query.trim()
+
+    if (trimmedQuery.length < 2 || selectedProduct?.description === query) {
+      setSuggestions([])
+      setIsSuggestionListOpen(false)
+      setIsSuggesting(false)
+      return
+    }
+
+    let isCurrentSearch = true
+    setIsSuggesting(true)
+    const timeoutId = window.setTimeout(async () => {
+      const result = await getProducts({ search: trimmedQuery })
+
+      if (!isCurrentSearch) {
+        return
+      }
+
+      if (result.error || !result.data) {
+        setSuggestions([])
+        setIsSuggestionListOpen(false)
+      } else {
+        setSuggestions(result.data.slice(0, 6).map(toPosProduct))
+        setIsSuggestionListOpen(true)
+      }
+
+      setIsSuggesting(false)
+    }, 250)
+
+    return () => {
+      isCurrentSearch = false
+      window.clearTimeout(timeoutId)
+    }
+  }, [query, selectedProduct?.description])
+
+  function handleQueryChange(value: string) {
+    setQuery(value)
+    setSelectedProduct(null)
+    setIsSuggestionListOpen(value.trim().length >= 2)
+  }
+
+  function selectSuggestedProduct(product: PosProduct) {
+    setSelectedProduct(product)
+    setQuery(product.description)
+    setSuggestions([])
+    setIsSuggestionListOpen(false)
+  }
+
   async function handleSearch() {
     const trimmedQuery = query.trim()
 
@@ -314,6 +366,8 @@ export default function SalesPage() {
     }
 
     setSelectedProduct(toPosProduct(product))
+    setSuggestions([])
+    setIsSuggestionListOpen(false)
   }
 
   function addToCart(product: PosProduct) {
@@ -348,6 +402,8 @@ export default function SalesPage() {
     })
     setQuery("")
     setSelectedProduct(null)
+    setSuggestions([])
+    setIsSuggestionListOpen(false)
   }
 
   function updateQuantity(productId: string, quantity: number) {
@@ -550,14 +606,63 @@ export default function SalesPage() {
                 className="h-14 pl-10 text-base"
                 value={query}
                 placeholder="Buscar produto ou bipar código"
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => handleQueryChange(event.target.value)}
+                onFocus={() => {
+                  if (suggestions.length > 0) {
+                    setIsSuggestionListOpen(true)
+                  }
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault()
                     void handleSearch()
+                  } else if (event.key === "Escape") {
+                    setIsSuggestionListOpen(false)
                   }
                 }}
               />
+              {isSuggestionListOpen ? (
+                <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-200/80">
+                  {isSuggesting ? (
+                    <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-500">
+                      <Loader2 className="size-4 animate-spin" />
+                      Buscando produtos...
+                    </div>
+                  ) : suggestions.length > 0 ? (
+                    <div className="max-h-72 overflow-y-auto">
+                      {suggestions.map((product) => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          className="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-indigo-50"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => selectSuggestedProduct(product)}
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-slate-950">
+                              {product.description}
+                            </span>
+                            <span className="mt-1 block truncate text-xs text-slate-500">
+                              Código: {product.barcode ?? "não informado"} • Estoque:{" "}
+                              {product.stock_quantity}
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-right">
+                            <span className="block font-mono text-sm font-semibold text-emerald-700">
+                              {formatCurrency(product.sale_price)}
+                            </span>
+                            <span className="text-xs text-slate-400">Selecionar</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : query.trim().length >= 2 ? (
+                    <div className="px-4 py-3 text-sm text-slate-500">
+                      Nenhum produto encontrado.
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             <Button
               type="button"

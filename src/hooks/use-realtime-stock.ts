@@ -19,6 +19,11 @@ export function useRealtimeStock() {
   }, [])
 
   useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      void refreshCriticalCount()
+      return
+    }
+
     const supabase = createClient()
     void refreshCriticalCount()
 
