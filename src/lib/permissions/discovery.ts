@@ -6,7 +6,11 @@ import path from "node:path"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { getScreenMetadata } from "@/lib/permissions/screen-metadata"
-import { createScreenId, type AppScreen } from "@/lib/permissions/shared"
+import {
+  MANAGED_PERMISSION_ROLES,
+  createScreenId,
+  type AppScreen,
+} from "@/lib/permissions/shared"
 import type { Database } from "@/lib/supabase/types"
 
 const DASHBOARD_APP_DIR = path.join(process.cwd(), "src", "app", "(dashboard)")
@@ -97,18 +101,13 @@ export async function syncDiscoveredScreens(supabase: SupabaseClient<Database>) 
     throw new Error("Não foi possível sincronizar as telas do sistema.")
   }
 
-  const defaultPermissionRows = screens.flatMap((screen) => [
-    {
-      role: "admin",
+  const defaultPermissionRows = screens.flatMap((screen) =>
+    MANAGED_PERMISSION_ROLES.map((role) => ({
+      role,
       screen_id: screen.id,
-      can_access: true,
-    },
-    {
-      role: "operator",
-      screen_id: screen.id,
-      can_access: screen.defaultAccess === "operator",
-    },
-  ] satisfies RoleScreenPermissionInsert[])
+      can_access: screen.defaultAccess === role,
+    }) satisfies RoleScreenPermissionInsert),
+  )
 
   const { error: permissionsError } = await supabase
     .from("role_screen_permissions")

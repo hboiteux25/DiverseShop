@@ -21,6 +21,16 @@ export type ActionResult<T> =
   | { data: T; error: null; message: string }
   | { data: null; error: string; message: string }
 
+type LegacyProfileRow = Pick<ProfileRow, "id" | "name" | "role" | "created_at">
+
+function legacyProfileToAppUser(profile: LegacyProfileRow): AppUser {
+  return {
+    ...profile,
+    email: null,
+    must_change_password: false,
+  }
+}
+
 async function getCurrentAdmin() {
   const supabase = await createClient()
   const {
@@ -58,21 +68,39 @@ export async function getUsers(): Promise<ActionResult<AppUser[]>> {
       }
     }
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("profiles")
       .select("id, name, email, role, created_at, must_change_password")
       .order("name", { ascending: true })
 
-    if (error || !data) {
+    if (data) {
+      return {
+        data,
+        error: null,
+        message: "Usuários carregados com sucesso.",
+      }
+    }
+
+    const { data: legacyData, error: legacyError } = await supabase
+      .from("profiles")
+      .select("id, name, role, created_at")
+      .order("name", { ascending: true })
+
+    if (legacyError || !legacyData) {
+      const diagnosticMessage =
+        process.env.NODE_ENV === "development"
+          ? ` (${legacyError?.message ?? "erro desconhecido"})`
+          : ""
+
       return {
         data: null,
-        error: "Não foi possível carregar os usuários.",
+        error: `Não foi possível carregar os usuários.${diagnosticMessage}`,
         message: "Erro ao carregar usuários.",
       }
     }
 
     return {
-      data,
+      data: legacyData.map(legacyProfileToAppUser),
       error: null,
       message: "Usuários carregados com sucesso.",
     }

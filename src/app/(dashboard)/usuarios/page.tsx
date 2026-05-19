@@ -5,16 +5,37 @@ import { getUsers } from "@/app/actions/users"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScreenPermissionsTable } from "@/components/usuarios/screen-permissions-table"
 import { UsersPermissionsTable } from "@/components/usuarios/users-permissions-table"
+import { ACCESS_DENIED_ROUTE } from "@/lib/permissions/shared"
+import { createClient } from "@/lib/supabase/server"
+
+async function requireAdminAccess() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/login?redirectedFrom=/usuarios")
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (profile?.role !== "admin") {
+    redirect(`${ACCESS_DENIED_ROUTE}?rota=/usuarios`)
+  }
+}
 
 export default async function UsersPage() {
+  await requireAdminAccess()
+
   const [usersResult, screenPermissionsResult] = await Promise.all([
     getUsers(),
     getScreenPermissionsConfiguration(),
   ])
-
-  if (usersResult.error || !usersResult.data) {
-    redirect("/vendas")
-  }
 
   return (
     <main className="flex w-full flex-col gap-6">
@@ -34,7 +55,19 @@ export default async function UsersPage() {
           <TabsTrigger value="telas">Acesso por tela</TabsTrigger>
         </TabsList>
         <TabsContent value="usuarios">
-          <UsersPermissionsTable users={usersResult.data ?? []} />
+          {usersResult.data ? (
+            <UsersPermissionsTable users={usersResult.data} />
+          ) : (
+            <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 shadow-sm">
+              <h2 className="text-lg font-semibold">Usuários indisponíveis</h2>
+              <p className="mt-2 max-w-3xl">
+                {usersResult.error ?? "Não foi possível carregar os usuários agora."}
+              </p>
+              <p className="mt-2 max-w-3xl">
+                Confirme se as migrations de perfis e permissões foram aplicadas no Supabase.
+              </p>
+            </section>
+          )}
         </TabsContent>
         <TabsContent value="telas">
           {screenPermissionsResult.data ? (
