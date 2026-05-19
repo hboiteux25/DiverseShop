@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import type { User } from "@supabase/supabase-js"
 
 import { getUserRoleFromIdentity, isUserRole as isKnownUserRole } from "@/lib/permissions/shared"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -9,6 +10,7 @@ import type { Database } from "@/lib/supabase/types"
 import { userCreateSchema, type UserCreateInput } from "@/lib/validations/permissions"
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"]
+type AdminSupabaseClient = ReturnType<typeof createAdminClient>
 
 export type UserRole = "admin" | "operator"
 
@@ -22,9 +24,34 @@ export type ActionResult<T> =
   | { data: null; error: string; message: string }
 
 type LegacyProfileRow = Pick<ProfileRow, "id" | "name" | "role" | "created_at">
+type ProfileWithEmailRow = Pick<ProfileRow, "id" | "name" | "email" | "role" | "created_at">
 
 function isSupabaseAdminCredentialsError(error: unknown) {
   return error instanceof Error && error.message === "Supabase admin credentials are not configured."
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = error.message
+
+    return typeof message === "string" ? message : null
+  }
+
+  return null
+}
+
+function isMissingProfileColumnError(error: unknown) {
+  const message = getErrorMessage(error)?.toLowerCase() ?? ""
+
+  return (
+    message.includes("must_change_password") ||
+    message.includes("password_changed_at") ||
+    message.includes("schema cache")
+  )
 }
 
 function legacyProfileToAppUser(profile: LegacyProfileRow): AppUser {
@@ -32,6 +59,109 @@ function legacyProfileToAppUser(profile: LegacyProfileRow): AppUser {
     ...profile,
     email: null,
     must_change_password: false,
+  }
+}
+
+function profileWithEmailToAppUser(profile: ProfileWithEmailRow): AppUser {
+  return {
+    ...profile,
+    must_change_password: false,
+  }
+}
+
+async function findAuthUserByEmail(
+  adminSupabase: AdminSupabaseClient,
+  email: string,
+): Promise<User | null> {
+  const normalizedEmail = email.toLowerCase()
+  const perPage = 100
+
+  for (let page = 1; page <= 20; page += 1) {
+    const { data, error } = await adminSupabase.auth.admin.listUsers({ page, perPage })
+
+    if (error || !data.users) {
+      return null
+    }
+
+    const user = data.users.find(
+      (authUser) => authUser.email?.toLowerCase() === normalizedEmail,
+    )
+
+    if (user) {
+      return user
+    }
+
+    if (data.users.length < perPage) {
+      return null
+    }
+  }
+
+  return null
+}
+
+async function upsertUserProfile(
+  adminSupabase: AdminSupabaseClient,
+  userId: string,
+  user: UserCreateInput,
+  successMessage: string,
+): Promise<ActionResult<AppUser>> {
+  const { data: profile, error: profileError } = await adminSupabase
+    .from("profiles")
+    .upsert(
+      {
+        id: userId,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        must_change_password: true,
+        password_changed_at: null,
+      },
+      { onConflict: "id" },
+    )
+    .select("id, name, email, role, created_at, must_change_password")
+    .single()
+
+  if (profile) {
+    revalidatePath("/usuarios")
+
+    return {
+      data: profile,
+      error: null,
+      message: successMessage,
+    }
+  }
+
+  if (isMissingProfileColumnError(profileError)) {
+    const { data: legacyProfile, error: legacyProfileError } = await adminSupabase
+      .from("profiles")
+      .upsert(
+        {
+          id: userId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+        { onConflict: "id" },
+      )
+      .select("id, name, email, role, created_at")
+      .single()
+
+    if (legacyProfile && !legacyProfileError) {
+      revalidatePath("/usuarios")
+
+      return {
+        data: profileWithEmailToAppUser(legacyProfile),
+        error: null,
+        message:
+          "Usuário cadastrado com sucesso. A troca obrigatória de senha será ativada após aplicar a migration de perfis.",
+      }
+    }
+  }
+
+  return {
+    data: null,
+    error: "Usuário criado no Auth, mas o perfil não pôde ser configurado.",
+    message: "Erro ao cadastrar usuário.",
   }
 }
 
@@ -155,6 +285,25 @@ export async function updateUserRole(
       .select("id, name, email, role, created_at, must_change_password")
       .single()
 
+    if (isMissingProfileColumnError(error)) {
+      const { data: legacyData, error: legacyError } = await supabase
+        .from("profiles")
+        .update({ role })
+        .eq("id", userId)
+        .select("id, name, email, role, created_at")
+        .single()
+
+      if (legacyData && !legacyError) {
+        revalidatePath("/usuarios")
+
+        return {
+          data: profileWithEmailToAppUser(legacyData),
+          error: null,
+          message: "Permissão atualizada com sucesso.",
+        }
+      }
+    }
+
     if (error || !data) {
       return {
         data: null,
@@ -217,49 +366,45 @@ export async function createUser(input: UserCreateInput): Promise<ActionResult<A
       })
 
     if (createError || !createdUser.user) {
+      const isExistingUser = createError?.message.toLowerCase().includes("already") ?? false
+
+      if (isExistingUser) {
+        const existingUser = await findAuthUserByEmail(adminSupabase, parsedUser.data.email)
+
+        if (existingUser) {
+          return upsertUserProfile(
+            adminSupabase,
+            existingUser.id,
+            parsedUser.data,
+            "Usuário já existia no Auth e o perfil foi configurado com sucesso.",
+          )
+        }
+      }
+
       return {
         data: null,
         error:
-          createError?.message.toLowerCase().includes("already")
+          isExistingUser
             ? "Já existe um usuário cadastrado com este email."
             : "Não foi possível criar o usuário no Supabase Auth.",
         message: "Erro ao cadastrar usuário.",
       }
     }
 
-    const { data: profile, error: profileError } = await adminSupabase
-      .from("profiles")
-      .upsert(
-        {
-          id: createdUser.user.id,
-          name: parsedUser.data.name,
-          email: parsedUser.data.email,
-          role: parsedUser.data.role,
-          must_change_password: true,
-          password_changed_at: null,
-        },
-        { onConflict: "id" },
-      )
-      .select("id, name, email, role, created_at, must_change_password")
-      .single()
+    const profileResult = await upsertUserProfile(
+      adminSupabase,
+      createdUser.user.id,
+      parsedUser.data,
+      "Usuário cadastrado com sucesso.",
+    )
 
-    if (profileError || !profile) {
+    if (profileResult.error) {
       await adminSupabase.auth.admin.deleteUser(createdUser.user.id)
 
-      return {
-        data: null,
-        error: "Usuário criado no Auth, mas o perfil não pôde ser configurado.",
-        message: "Erro ao cadastrar usuário.",
-      }
+      return profileResult
     }
 
-    revalidatePath("/usuarios")
-
-    return {
-      data: profile,
-      error: null,
-      message: "Usuário cadastrado com sucesso.",
-    }
+    return profileResult
   } catch (error) {
     if (isSupabaseAdminCredentialsError(error)) {
       return {
