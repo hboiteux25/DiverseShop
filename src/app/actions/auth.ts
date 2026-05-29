@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation"
 import type { AuthError, User } from "@supabase/supabase-js"
 
+import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import {
   resetPasswordRequestSchema,
@@ -142,7 +143,8 @@ export async function updateOwnPassword(
       }
     }
 
-    const { error: updateError } = await supabase.auth.updateUser({
+    const adminSupabase = createAdminClient()
+    const { error: updateError } = await adminSupabase.auth.admin.updateUserById(user.id, {
       password: parsedPassword.data.password,
     })
 
@@ -153,11 +155,12 @@ export async function updateOwnPassword(
       }
     }
 
-    const { error: profileError } = await supabase
+    const passwordChangedAt = new Date().toISOString()
+    const { error: profileError } = await adminSupabase
       .from("profiles")
       .update({
         must_change_password: false,
-        password_changed_at: new Date().toISOString(),
+        password_changed_at: passwordChangedAt,
       })
       .eq("id", user.id)
 
@@ -166,6 +169,17 @@ export async function updateOwnPassword(
         data: null,
         error: "Senha alterada, mas não foi possível liberar o acesso. Chame um administrador.",
       }
+    }
+
+    const { data: authUserData } = await adminSupabase.auth.admin.getUserById(user.id)
+
+    if (authUserData.user) {
+      await adminSupabase.auth.admin.updateUserById(user.id, {
+        app_metadata: {
+          ...authUserData.user.app_metadata,
+          must_change_password: false,
+        },
+      })
     }
 
     await supabase.auth.signOut()

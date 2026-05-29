@@ -204,7 +204,11 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(NextResponse.redirect(redirectUrl))
   }
 
-  if (user && isProtectedRoute(pathname) && !pathname.startsWith("/api/")) {
+  if (
+    user &&
+    isProtectedRoute(pathname) &&
+    !pathname.startsWith("/api/")
+  ) {
     const mustChangePassword = await getMustChangePasswordWithTimeout(supabase, user.id)
 
     if (mustChangePassword && !isFirstAccessRoute(pathname)) {
@@ -233,7 +237,12 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(NextResponse.redirect(redirectUrl))
   }
 
-  if (user && isProtectedRoute(pathname) && !pathname.startsWith("/api/")) {
+  if (
+    user &&
+    isProtectedRoute(pathname) &&
+    !isFirstAccessRoute(pathname) &&
+    !pathname.startsWith("/api/")
+  ) {
     const role = await getUserRoleWithTimeout(supabase, user)
 
     if (role === "operator" && !isAccessDeniedRoute(pathname)) {
