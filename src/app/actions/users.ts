@@ -11,6 +11,7 @@ import { userCreateSchema, type UserCreateInput } from "@/lib/validations/permis
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"]
 type AdminSupabaseClient = ReturnType<typeof createAdminClient>
+type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>
 
 export type UserRole = "admin" | "operator"
 
@@ -99,8 +100,57 @@ async function findAuthUserByEmail(
   return null
 }
 
+async function syncAuthUserMetadata(
+  adminSupabase: AdminSupabaseClient,
+  userId: string,
+  user: Pick<UserCreateInput, "name" | "role">,
+  mustChangePassword: boolean,
+) {
+  const { data: authUserData, error: getUserError } =
+    await adminSupabase.auth.admin.getUserById(userId)
+
+  if (getUserError || !authUserData.user) {
+    return false
+  }
+
+  const { error: updateUserError } = await adminSupabase.auth.admin.updateUserById(userId, {
+    user_metadata: {
+      ...authUserData.user.user_metadata,
+      name: user.name,
+    },
+    app_metadata: {
+      ...authUserData.user.app_metadata,
+      role: user.role,
+      must_change_password: mustChangePassword,
+    },
+  })
+
+  return !updateUserError
+}
+
+async function syncUpdatedUserRoleMetadata(user: AppUser) {
+  if (!isKnownUserRole(user.role)) {
+    return
+  }
+
+  try {
+    const adminSupabase = createAdminClient()
+    await syncAuthUserMetadata(
+      adminSupabase,
+      user.id,
+      { name: user.name, role: user.role },
+      user.must_change_password,
+    )
+  } catch (error) {
+    if (!isSupabaseAdminCredentialsError(error)) {
+      throw error
+    }
+  }
+}
+
 async function upsertUserProfile(
   adminSupabase: AdminSupabaseClient,
+  actorSupabase: ServerSupabaseClient,
   userId: string,
   user: UserCreateInput,
   successMessage: string,
@@ -122,10 +172,35 @@ async function upsertUserProfile(
     .single()
 
   if (profile) {
+    await syncAuthUserMetadata(adminSupabase, userId, user, true)
     revalidatePath("/usuarios")
 
     return {
       data: profile,
+      error: null,
+      message: successMessage,
+    }
+  }
+
+  const { data: actorProfile, error: actorProfileError } = await actorSupabase
+    .from("profiles")
+    .update({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      must_change_password: true,
+      password_changed_at: null,
+    })
+    .eq("id", userId)
+    .select("id, name, email, role, created_at, must_change_password")
+    .single()
+
+  if (actorProfile && !actorProfileError) {
+    await syncAuthUserMetadata(adminSupabase, userId, user, true)
+    revalidatePath("/usuarios")
+
+    return {
+      data: actorProfile,
       error: null,
       message: successMessage,
     }
@@ -147,6 +222,7 @@ async function upsertUserProfile(
       .single()
 
     if (legacyProfile && !legacyProfileError) {
+      await syncAuthUserMetadata(adminSupabase, userId, user, true)
       revalidatePath("/usuarios")
 
       return {
@@ -294,10 +370,13 @@ export async function updateUserRole(
         .single()
 
       if (legacyData && !legacyError) {
+        const appUser = profileWithEmailToAppUser(legacyData)
+
+        await syncUpdatedUserRoleMetadata(appUser)
         revalidatePath("/usuarios")
 
         return {
-          data: profileWithEmailToAppUser(legacyData),
+          data: appUser,
           error: null,
           message: "Permissão atualizada com sucesso.",
         }
@@ -312,6 +391,7 @@ export async function updateUserRole(
       }
     }
 
+    await syncUpdatedUserRoleMetadata(data)
     revalidatePath("/usuarios")
 
     return {
@@ -340,7 +420,7 @@ export async function createUser(input: UserCreateInput): Promise<ActionResult<A
   }
 
   try {
-    const { isAdmin, userId: currentUserId } = await getCurrentAdmin()
+    const { supabase, isAdmin, userId: currentUserId } = await getCurrentAdmin()
 
     if (!isAdmin || !currentUserId) {
       return {
@@ -374,6 +454,7 @@ export async function createUser(input: UserCreateInput): Promise<ActionResult<A
         if (existingUser) {
           return upsertUserProfile(
             adminSupabase,
+            supabase,
             existingUser.id,
             parsedUser.data,
             "Usuário já existia no Auth e o perfil foi configurado com sucesso.",
@@ -393,6 +474,7 @@ export async function createUser(input: UserCreateInput): Promise<ActionResult<A
 
     const profileResult = await upsertUserProfile(
       adminSupabase,
+      supabase,
       createdUser.user.id,
       parsedUser.data,
       "Usuário cadastrado com sucesso.",
