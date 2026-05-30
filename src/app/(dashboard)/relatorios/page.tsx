@@ -15,11 +15,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { Download, FileText, Loader2, Printer } from "lucide-react"
+import { Download, FileSpreadsheet, FileText, Loader2, Printer } from "lucide-react"
 import { toast } from "sonner"
 
 import {
-  exportToExcel,
   getAnnualReport,
   getDailyReport,
   getMonthlyReport,
@@ -54,6 +53,7 @@ const PAYMENT_LABELS = {
 }
 
 const CHART_COLORS = ["#4f46e5", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444"]
+const PRODUCT_CONTROL_EXPORT_URL = "/api/relatorios/exportar-produtos"
 
 function getTodayDate() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -99,24 +99,32 @@ function paymentMethodLabel(paymentMethod: string) {
   return "Não informado"
 }
 
-function downloadBase64(fileName: string, contentBase64: string) {
-  const binary = window.atob(contentBase64)
-  const bytes = new Uint8Array(binary.length)
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index)
-  }
-
-  const url = URL.createObjectURL(
-    new Blob([bytes], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }),
-  )
+function downloadBlob(fileName: string, blob: Blob) {
+  const url = URL.createObjectURL(blob)
   const link = document.createElement("a")
+
   link.href = url
   link.download = fileName
   link.click()
   URL.revokeObjectURL(url)
+}
+
+function getFileNameFromDisposition(contentDisposition: string | null) {
+  if (!contentDisposition) {
+    return "Controle Geral De Produtos Diverse Shop DF.xlsx"
+  }
+
+  const fileNameMatch = /filename="([^"]+)"/.exec(contentDisposition)
+  return fileNameMatch?.[1] ?? "Controle Geral De Produtos Diverse Shop DF.xlsx"
+}
+
+function getErrorMessage(payload: unknown) {
+  if (typeof payload !== "object" || payload === null || !("error" in payload)) {
+    return "Não foi possível exportar a planilha."
+  }
+
+  const error = payload.error
+  return typeof error === "string" ? error : "Não foi possível exportar a planilha."
 }
 
 function SummaryCard({
@@ -146,45 +154,63 @@ function ChartPanel({ children, title }: { children: React.ReactNode; title: str
   )
 }
 
-function ExportButtons({
-  reportType,
-  rows,
-}: {
-  reportType: string
-  rows: ExportRow[]
-}) {
-  const [isExporting, setIsExporting] = useState(false)
-
-  async function handleExcelExport() {
-    if (rows.length === 0) {
-      toast.warning("Não há dados para exportar.")
-      return
-    }
-
-    setIsExporting(true)
-    const result = await exportToExcel(reportType, rows)
-    setIsExporting(false)
-
-    if (result.error || !result.data) {
-      toast.error(result.message, { description: result.error })
-      return
-    }
-
-    downloadBase64(result.data.fileName, result.data.contentBase64)
-    toast.success(result.message)
-  }
-
+function ExportButtons() {
   return (
     <div className="flex flex-wrap gap-2 print:hidden">
-      <Button type="button" variant="outline" onClick={handleExcelExport} disabled={isExporting}>
-        {isExporting ? <Loader2 className="animate-spin" /> : <Download />}
-        Exportar Excel
-      </Button>
       <Button type="button" variant="outline" onClick={() => window.print()}>
         <Printer />
         Exportar PDF
       </Button>
     </div>
+  )
+}
+
+function ProductControlExportButton() {
+  const [isExporting, setIsExporting] = useState(false)
+
+  async function handleExport() {
+    setIsExporting(true)
+
+    try {
+      const response = await fetch(PRODUCT_CONTROL_EXPORT_URL)
+
+      if (!response.ok) {
+        const payload: unknown = await response.json().catch(() => null)
+        toast.error("Erro ao exportar planilha.", {
+          description: getErrorMessage(payload),
+        })
+        return
+      }
+
+      const blob = await response.blob()
+      const fileName = getFileNameFromDisposition(response.headers.get("Content-Disposition"))
+      const exportedProducts = response.headers.get("X-Exported-Products")
+
+      downloadBlob(fileName, blob)
+      toast.success("Planilha exportada com sucesso.", {
+        description: exportedProducts ? `${exportedProducts} produto(s) exportado(s).` : undefined,
+      })
+    } catch {
+      toast.error("Erro ao exportar planilha.", {
+        description: "Não foi possível baixar o arquivo agora.",
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      className="h-10 bg-gradient-to-r from-indigo-600 to-sky-500 text-white"
+      disabled={isExporting}
+      onClick={() => {
+        void handleExport()
+      }}
+    >
+      {isExporting ? <Loader2 className="animate-spin" /> : <Download />}
+      Exportar controle geral
+    </Button>
   )
 }
 
@@ -258,19 +284,6 @@ export default function ReportsPage() {
     ].filter((item) => item.value > 0)
   }, [dailyReport])
 
-  const dailyRows: ExportRow[] = useMemo(
-    () =>
-      dailyReport?.sales.map((sale) => ({
-        Data: formatDateTime(sale.created_at),
-        Venda: sale.id,
-        Pagamento: paymentMethodLabel(sale.payment_method),
-        Total: sale.total,
-        Desconto: sale.discount,
-        Liquido: sale.net_received,
-      })) ?? [],
-    [dailyReport],
-  )
-
   const monthlyRows: ExportRow[] = useMemo(
     () =>
       monthlyReport?.days.map((day) => ({
@@ -339,6 +352,21 @@ export default function ReportsPage() {
         </Button>
       </div>
 
+      <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700">
+            <FileSpreadsheet className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-slate-950">Controle geral de produtos</h3>
+            <p className="text-sm text-slate-500">
+              Modelo padrão da planilha da Diverse Shop DF.
+            </p>
+          </div>
+        </div>
+        <ProductControlExportButton />
+      </div>
+
       <Tabs defaultValue="diario" className="w-full">
         <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 lg:grid-cols-5 print:hidden">
           <TabsTrigger value="diario">Diário</TabsTrigger>
@@ -354,7 +382,7 @@ export default function ReportsPage() {
               <Label htmlFor="daily-date">Data</Label>
               <Input id="daily-date" type="date" value={dailyDate} onChange={(event) => setDailyDate(event.target.value)} />
             </div>
-            <ExportButtons reportType={`Diario_${dailyDate}`} rows={dailyRows} />
+            <ExportButtons />
           </div>
 
           {dailyReport ? (
@@ -440,7 +468,7 @@ export default function ReportsPage() {
                 <Input type="number" min={2024} value={monthYear} onChange={(event) => setMonthYear(event.target.value)} />
               </div>
             </div>
-            <ExportButtons reportType={`Mensal_${month}_${monthYear}`} rows={monthlyRows} />
+            <ExportButtons />
           </div>
 
           {monthlyReport ? (
@@ -472,7 +500,7 @@ export default function ReportsPage() {
               <Label>Ano</Label>
               <Input type="number" min={2024} value={annualYear} onChange={(event) => setAnnualYear(event.target.value)} />
             </div>
-            <ExportButtons reportType={`Anual_${annualYear}`} rows={annualRows} />
+            <ExportButtons />
           </div>
 
           {annualReport ? (
@@ -504,8 +532,6 @@ export default function ReportsPage() {
             to={rangeTo}
             onFromChange={setRangeFrom}
             onToChange={setRangeTo}
-            exportType="Produtos"
-            rows={productRows}
           />
           <ReportTable rows={productRows} emptyText="Nenhum produto vendido no período." />
         </TabsContent>
@@ -516,8 +542,6 @@ export default function ReportsPage() {
             to={rangeTo}
             onFromChange={setRangeFrom}
             onToChange={setRangeTo}
-            exportType="Fornecedores"
-            rows={supplierRows}
           />
           <ReportTable rows={supplierRows} emptyText="Nenhum fornecedor com venda no período." />
         </TabsContent>
@@ -531,15 +555,11 @@ function RangeHeader({
   to,
   onFromChange,
   onToChange,
-  exportType,
-  rows,
 }: {
   from: string
   to: string
   onFromChange: (value: string) => void
   onToChange: (value: string) => void
-  exportType: string
-  rows: ExportRow[]
 }) {
   return (
     <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end sm:justify-between">
@@ -553,7 +573,7 @@ function RangeHeader({
           <Input type="date" value={to} onChange={(event) => onToChange(event.target.value)} />
         </div>
       </div>
-      <ExportButtons reportType={`${exportType}_${from}_${to}`} rows={rows} />
+      <ExportButtons />
     </div>
   )
 }

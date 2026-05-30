@@ -1,7 +1,5 @@
 "use server"
 
-import * as XLSX from "xlsx"
-
 import { createClient } from "@/lib/supabase/server"
 import type { Database, Json } from "@/lib/supabase/types"
 
@@ -103,11 +101,6 @@ export type SupplierReportItem = {
 
 export type ExportCell = string | number | null
 export type ExportRow = Record<string, ExportCell>
-
-export type ExportResult = {
-  fileName: string
-  contentBase64: string
-}
 
 export type ActionResult<T> =
   | { data: T; error: null; message: string }
@@ -546,53 +539,5 @@ export async function getSupplierReport(
     data: Array.from(totals.values()).sort((left, right) => right.net - left.net),
     error: null,
     message: "Relatório por fornecedor carregado com sucesso.",
-  }
-}
-
-export async function exportToExcel(
-  reportType: string,
-  data: ExportRow[],
-): Promise<ActionResult<ExportResult>> {
-  try {
-    const worksheet = XLSX.utils.json_to_sheet(data)
-    const workbook = XLSX.utils.book_new()
-    const range = XLSX.utils.decode_range(worksheet["!ref"] ?? "A1:A1")
-
-    for (let column = range.s.c; column <= range.e.c; column += 1) {
-      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: column })
-      const cell = worksheet[cellAddress]
-
-      if (cell) {
-        cell.s = {
-          fill: { fgColor: { rgb: "FFFFC000" } },
-          font: { bold: true, color: { rgb: "FF111827" } },
-          alignment: { horizontal: "center" },
-        }
-      }
-    }
-
-    worksheet["!cols"] = Object.keys(data[0] ?? {}).map(() => ({ wch: 20 }))
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Relatório")
-
-    const buffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "buffer",
-      cellStyles: true,
-    })
-
-    return {
-      data: {
-        fileName: `Relatorio_${reportType}_${new Date().toISOString().slice(0, 10)}.xlsx`,
-        contentBase64: Buffer.from(buffer).toString("base64"),
-      },
-      error: null,
-      message: "Excel gerado com sucesso.",
-    }
-  } catch {
-    return {
-      data: null,
-      error: "Não foi possível gerar o Excel agora.",
-      message: "Erro ao exportar Excel.",
-    }
   }
 }
