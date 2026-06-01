@@ -137,6 +137,39 @@ export type Database = {
           },
         ]
       }
+      customers: {
+        Row: {
+          cpf: string
+          created_at: string
+          deleted_at: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          cpf: string
+          created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       price_history: {
         Row: {
           changed_by: string | null
@@ -405,6 +438,7 @@ export type Database = {
           card_fee_rate: number | null
           created_at: string
           created_by: string | null
+          customer_id: string | null
           discount: number
           id: string
           net_received: number
@@ -418,6 +452,7 @@ export type Database = {
           card_fee_rate?: number | null
           created_at?: string
           created_by?: string | null
+          customer_id?: string | null
           discount?: number
           id?: string
           net_received: number
@@ -431,6 +466,7 @@ export type Database = {
           card_fee_rate?: number | null
           created_at?: string
           created_by?: string | null
+          customer_id?: string | null
           discount?: number
           id?: string
           net_received?: number
@@ -440,6 +476,13 @@ export type Database = {
           total?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sales_created_by_fkey"
             columns: ["created_by"]
@@ -585,6 +628,7 @@ export type Database = {
           p_discount?: number
           p_card_fee_rate?: number | null
           p_payment_details?: Json
+          p_customer_id?: string | null
         }
         Returns: Database["public"]["Tables"]["sales"]["Row"]
       }

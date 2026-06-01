@@ -15,6 +15,7 @@ export type ScreenIconName =
   | "package"
   | "shield"
   | "shopping-cart"
+  | "users"
 
 export type ScreenDefaultAccess = "admin" | "operator"
 
@@ -46,6 +47,7 @@ const SCREEN_ICON_NAMES = [
   "package",
   "shield",
   "shopping-cart",
+  "users",
 ] as const
 
 export const ACCESS_DENIED_ROUTE = "/acesso-negado"

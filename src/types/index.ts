@@ -59,6 +59,17 @@ export interface Product {
   updated_at: string
 }
 
+export interface Customer {
+  id: string
+  name: string
+  cpf: string
+  phone: string | null
+  email: string | null
+  deleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface SaleItem {
   id: string
   sale_id: string
@@ -75,6 +86,7 @@ export interface Sale {
   discount: number
   payment_method: PaymentMethod
   card_fee_rate: number | null
+  customer_id: string | null
   net_received: number
   created_by: string
   created_at: string

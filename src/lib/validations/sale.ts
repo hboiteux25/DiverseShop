@@ -33,6 +33,7 @@ export const saleInputSchema = z
     payment_method: paymentMethodSchema,
     discount: z.coerce.number().min(0, "Desconto geral não pode ser negativo").default(0),
     card_fee_rate: z.coerce.number().min(0, "Taxa de cartão inválida").nullable().default(null),
+    customer_id: postgresUuid("Cliente inválido").nullable().default(null),
     payment_details: paymentDetailsSchema.default({
       cash: 0,
       pix: 0,

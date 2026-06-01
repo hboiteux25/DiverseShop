@@ -4,6 +4,7 @@ import { Camera, Loader2, Minus, Plus, Search, Trash2, Wifi, WifiOff } from "luc
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 
+import type { Customer } from "@/app/actions/customers"
 import { getProductByBarcode, getProducts } from "@/app/actions/products"
 import { createSale } from "@/app/actions/sales"
 import { PaymentModal } from "@/components/vendas/payment-modal"
@@ -174,6 +175,7 @@ export default function SalesPage() {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [receipt, setReceipt] = useState<ReceiptData | null>(null)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [isOnline, setIsOnline] = useState(true)
   const [pendingOfflineCount, setPendingOfflineCount] = useState(0)
   const [isScannerOpen, setIsScannerOpen] = useState(false)
@@ -216,9 +218,10 @@ export default function SalesPage() {
       payment_method: paymentMethod,
       discount: discountAmount,
       card_fee_rate: cardBase > 0 ? CARD_FEE_RATE : null,
+      customer_id: selectedCustomer?.id ?? null,
       payment_details: paymentDetails,
     }),
-    [cardBase, cartItems, discountAmount, paymentDetails, paymentMethod],
+    [cardBase, cartItems, discountAmount, paymentDetails, paymentMethod, selectedCustomer?.id],
   )
   const paymentLabel =
     PAYMENT_OPTIONS.find((option) => option.value === paymentMethod)?.label ?? "Pagamento"
@@ -434,6 +437,7 @@ export default function SalesPage() {
       credit_card: "",
       debit_card: "",
     })
+    setSelectedCustomer(null)
     setReceipt(null)
     setIsReceiptModalOpen(false)
   }
@@ -479,6 +483,13 @@ export default function SalesPage() {
           payment_method: paymentMethod,
           card_fee_rate: cardBase > 0 ? CARD_FEE_RATE : null,
           payment_details: paymentDetails,
+          customer: selectedCustomer
+            ? {
+                id: selectedCustomer.id,
+                name: selectedCustomer.name,
+                cpf: selectedCustomer.cpf,
+              }
+            : null,
           isOffline: true,
         }),
         createdAt: new Date().toISOString(),
@@ -507,6 +518,13 @@ export default function SalesPage() {
         ...result.data,
         payment_method: paymentMethod,
         payment_details: paymentDetails,
+        customer: selectedCustomer
+          ? {
+              id: selectedCustomer.id,
+              name: selectedCustomer.name,
+              cpf: selectedCustomer.cpf,
+            }
+          : null,
       }),
     )
     setIsPaymentModalOpen(false)
@@ -893,8 +911,10 @@ export default function SalesPage() {
         saleInput={saleInput}
         finalTotal={finalTotal}
         paymentLabel={paymentLabel}
+        selectedCustomer={selectedCustomer}
         isSubmitting={isSubmitting}
         onOpenChange={setIsPaymentModalOpen}
+        onSelectCustomer={setSelectedCustomer}
         onConfirm={handleConfirmSale}
       />
       <ReceiptModal

@@ -3,7 +3,9 @@
 import { Loader2 } from "lucide-react"
 import { useMemo, useState } from "react"
 
+import type { Customer } from "@/app/actions/customers"
 import type { CartItem } from "@/components/vendas/types"
+import { CustomerSaleSelector } from "@/components/vendas/customer-sale-selector"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -22,8 +24,10 @@ type PaymentModalProps = {
   saleInput: SaleInput
   finalTotal: number
   paymentLabel: string
+  selectedCustomer: Customer | null
   isSubmitting: boolean
   onOpenChange: (open: boolean) => void
+  onSelectCustomer: (customer: Customer | null) => void
   onConfirm: () => Promise<void>
 }
 
@@ -56,8 +60,10 @@ export function PaymentModal({
   saleInput,
   finalTotal,
   paymentLabel,
+  selectedCustomer,
   isSubmitting,
   onOpenChange,
+  onSelectCustomer,
   onConfirm,
 }: PaymentModalProps) {
   const [cashReceived, setCashReceived] = useState("")
@@ -97,6 +103,11 @@ export function PaymentModal({
               ))}
             </div>
           </div>
+
+          <CustomerSaleSelector
+            selectedCustomer={selectedCustomer}
+            onSelectCustomer={onSelectCustomer}
+          />
 
           <div className="grid gap-2 rounded-xl border border-indigo-100 bg-indigo-50 p-4">
             <div className="flex justify-between text-sm text-indigo-800">

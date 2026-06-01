@@ -74,6 +74,22 @@ const SCREEN_METADATA: Record<string, ScreenMetadata> = {
     showInNavigation: true,
     defaultAccess: "admin",
   },
+  "/clientes": {
+    title: "Clientes",
+    description: "Cadastro, busca e histórico de clientes da loja.",
+    iconName: "users",
+    sortOrder: 85,
+    showInNavigation: true,
+    defaultAccess: "operator",
+  },
+  "/clientes/[id]": {
+    title: "Detalhes do cliente",
+    description: "Histórico de compras e edição dos dados do cliente.",
+    iconName: "users",
+    sortOrder: 86,
+    showInNavigation: false,
+    defaultAccess: "operator",
+  },
   "/caixa": {
     title: "Caixa",
     description: "Fechamento de caixa e conciliação dos recebimentos.",

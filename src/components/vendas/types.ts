@@ -25,6 +25,11 @@ export type ReceiptSale = {
   payment_method: PaymentMethod
   card_fee_rate: number | null
   payment_details: SaleInput["payment_details"]
+  customer: {
+    id: string
+    name: string
+    cpf: string
+  } | null
   isOffline?: boolean
 }
 

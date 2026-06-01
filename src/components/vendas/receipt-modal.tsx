@@ -3,6 +3,7 @@
 import { Printer, RotateCcw } from "lucide-react"
 
 import type { ReceiptData } from "@/components/vendas/types"
+import { formatCpf } from "@/components/clientes/customer-formatters"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -66,6 +67,7 @@ function getReceiptHtml(receipt: ReceiptData) {
         <p class="center">Comprovante de venda</p>
         <p>Venda: ${receipt.sale.id}</p>
         <p>Data: ${formatDateTime(receipt.sale.created_at)}</p>
+        ${receipt.sale.customer ? `<p>Cliente: ${receipt.sale.customer.name} - ${formatCpf(receipt.sale.customer.cpf)}</p>` : ""}
         <div class="items">
           ${receipt.items
             .map(
@@ -130,6 +132,14 @@ export function ReceiptModal({ open, receipt, onNewSale, onOpenChange }: Receipt
           <div className="flex justify-between">
             <span className="text-slate-500">Data</span>
             <span className="font-medium text-slate-950">{formatDateTime(receipt.sale.created_at)}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-slate-500">Cliente</span>
+            <span className="text-right font-medium text-slate-950">
+              {receipt.sale.customer
+                ? `${receipt.sale.customer.name} • ${formatCpf(receipt.sale.customer.cpf)}`
+                : "Não informado"}
+            </span>
           </div>
           <div className="grid gap-2 border-y border-slate-200 py-3">
             {receipt.items.map((item) => (

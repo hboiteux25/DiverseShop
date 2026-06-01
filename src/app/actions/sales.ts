@@ -84,6 +84,10 @@ function getSaleErrorMessage(errorMessage: string | undefined) {
     return "Um dos produtos do carrinho não foi encontrado ou foi removido."
   }
 
+  if (message.includes("Cliente") || normalizedMessage.includes("cliente nao encontrado")) {
+    return "O cliente vinculado não foi encontrado ou está inativo."
+  }
+
   if (message.includes("pagamento misto")) {
     return "Os valores do pagamento misto precisam fechar com o total."
   }
@@ -114,6 +118,7 @@ export async function createSale(data: SaleInput): Promise<ActionResult<SaleRow>
       p_discount: parsedSale.data.discount,
       p_card_fee_rate: parsedSale.data.card_fee_rate,
       p_payment_details: toPaymentDetails(parsedSale.data.payment_details),
+      p_customer_id: parsedSale.data.customer_id,
     })
 
     if (error || !sale) {
@@ -129,6 +134,10 @@ export async function createSale(data: SaleInput): Promise<ActionResult<SaleRow>
     revalidatePath("/vendas")
     revalidatePath("/produtos")
     revalidatePath("/estoque")
+    revalidatePath("/clientes")
+    if (parsedSale.data.customer_id) {
+      revalidatePath(`/clientes/${parsedSale.data.customer_id}`)
+    }
 
     return {
       data: sale,

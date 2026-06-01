@@ -14,6 +14,7 @@ import {
   PackageSearch,
   ShieldCheck,
   ShoppingCart,
+  Users,
   WalletCards,
 } from "lucide-react"
 
@@ -50,6 +51,7 @@ const SCREEN_ICONS: Record<ScreenIconName, ComponentType<{ className?: string }>
   package: PackageSearch,
   shield: ShieldCheck,
   "shopping-cart": ShoppingCart,
+  users: Users,
 }
 
 function isActivePath(pathname: string, href: string) {
