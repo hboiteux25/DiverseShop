@@ -71,6 +71,8 @@ function getFallbackScreens(userRole: UserRole): ScreenAccessItem[] {
     "/produtos/[id]",
     "/estoque",
     "/fornecedores",
+    "/clientes",
+    "/clientes/[id]",
     "/caixa",
     "/relatorios",
     "/chat",

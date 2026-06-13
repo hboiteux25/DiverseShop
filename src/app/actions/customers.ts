@@ -56,6 +56,29 @@ function isDuplicateCpfError(message: string | undefined) {
   return (message ?? "").includes("customers_cpf_active_unique")
 }
 
+function getCustomerMutationErrorMessage(error: { code?: string; message?: string } | null) {
+  const message = error?.message ?? ""
+
+  if (isDuplicateCpfError(message)) {
+    return "Já existe um cliente ativo com este CPF."
+  }
+
+  if (
+    error?.code === "42P01" ||
+    error?.code === "42703" ||
+    message.includes("Could not find the table") ||
+    message.includes("customers")
+  ) {
+    return "O banco ainda não foi atualizado para clientes. Aplique a migration 016_customers_and_sale_link.sql no Supabase."
+  }
+
+  if (message.includes("row-level security")) {
+    return "Seu usuário não tem permissão para cadastrar clientes. Verifique as políticas RLS da migration de clientes."
+  }
+
+  return "Não foi possível salvar o cliente."
+}
+
 export async function getCustomers(
   filters: CustomerSearchInput = { status: "active" },
 ): Promise<ActionResult<Customer[]>> {
@@ -169,9 +192,7 @@ export async function createCustomer(data: CustomerFormData): Promise<ActionResu
     if (error || !customer) {
       return {
         data: null,
-        error: isDuplicateCpfError(error?.message)
-          ? "Já existe um cliente ativo com este CPF."
-          : "Não foi possível criar o cliente.",
+        error: getCustomerMutationErrorMessage(error),
         message: "Erro ao criar cliente.",
       }
     }
@@ -221,9 +242,7 @@ export async function updateCustomer(
     if (error || !customer) {
       return {
         data: null,
-        error: isDuplicateCpfError(error?.message)
-          ? "Já existe um cliente ativo com este CPF."
-          : "Não foi possível atualizar o cliente.",
+        error: getCustomerMutationErrorMessage(error),
         message: "Erro ao atualizar cliente.",
       }
     }

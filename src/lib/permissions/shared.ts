@@ -55,7 +55,12 @@ export const FIRST_ACCESS_ROUTE = "/primeiro-acesso"
 
 export const PUBLIC_AUTH_ROUTES = ["/login", "/register", "/resetar-senha"] as const
 
-export const DEFAULT_OPERATOR_SCREEN_PATHS = ["/vendas", "/vendas/historico"] as const
+export const DEFAULT_OPERATOR_SCREEN_PATHS = [
+  "/vendas",
+  "/vendas/historico",
+  "/clientes",
+  "/clientes/[id]",
+] as const
 
 const ADMIN_EMAILS = ["henriqueboiteux62@gmail.com"] as const
 
